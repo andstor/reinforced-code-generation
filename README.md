@@ -6,12 +6,12 @@ Setup accelerate:
 accelerate config
 ```
 
-Run the script:
+Train with TRL:
 ```bash
 accelerate launch run_trl.py \
 --do_train \
 --max_train_samples 100 \
---dataset_name code_search_net \
+--dataset_name openai_humaneval \
 --dataset_config_name python \
 --text_column_name func_documentation_string \
 --model_name_or_path gpt2 \
@@ -25,6 +25,7 @@ accelerate launch run_trl.py \
 ```
 
 
+Train with TRL-X:
 ```bash
 accelerate launch run_trlx.py \
 --do_train \
@@ -32,8 +33,22 @@ accelerate launch run_trlx.py \
 --do_eval \
 --max_eval_samples 100 \
 --dataset_name code_search_net \
---dataset_config_name python \
---text_column_name func_documentation_string \
+--text_column_name prompt \
 --output_dir output \
 --seed 42
+```
+
+Add Antlr4 to Java classpath:
+```bash
+export CLASSPATH=".:/opt/homebrew/Cellar/antlr/4.11.1/antlr-4.11.1-complete.jar:$CLASSPATH"
+```
+
+Generate Python3 and Java parser and lexer for the Python3 grammar:
+```bash
+make -f python3.mk all
+````
+
+Show parse tree in a GUI:
+```bash
+make -f python3.mk grun < test.py 
 ```
