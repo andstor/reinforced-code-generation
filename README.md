@@ -12,16 +12,17 @@ accelerate launch run_trl.py \
 --do_train \
 --max_train_samples 100 \
 --dataset_name openai_humaneval \
---dataset_config_name python \
---text_column_name func_documentation_string \
+--dataset_config_name openai_humaneval \
+--text_column_name prompt \
 --model_name_or_path gpt2 \
+--num_train_epochs 2 \
 --per_device_train_batch_size 8 \
 --forward_batch_size 1 \
 --output_dir output \
 --seed 42 \
 --preprocessing_num_workers 10 \
---max_new_tokens 16 \
---report_to wandb 
+--max_new_tokens 256 \
+--report_to wandb
 ```
 
 
@@ -33,7 +34,7 @@ accelerate launch run_trlx.py \
 --do_eval \
 --max_eval_samples 100 \
 --dataset_name code_search_net \
---text_column_name prompt \
+--text_column_name python \
 --output_dir output \
 --seed 42
 ```

@@ -329,43 +329,43 @@ def main():
     if args.dataset_name is not None:
         # Downloading and loading a dataset from the hub.
         raw_datasets = load_dataset(args.dataset_name, args.dataset_config_name)
-        if "validation" not in raw_datasets.keys():
-            raw_datasets["validation"] = load_dataset(
-                args.dataset_name,
-                args.dataset_config_name,
-                split=f"train[:{args.validation_split_percentage}%]",
-            )
-            raw_datasets["train"] = load_dataset(
-                args.dataset_name,
-                args.dataset_config_name,
-                split=f"train[{args.validation_split_percentage}%:]",
-            )
-    else:
-        data_files = {}
-        dataset_args = {}
-        if args.train_file is not None:
-            data_files["train"] = args.train_file
-        if args.validation_file is not None:
-            data_files["validation"] = args.validation_file
-        extension = args.train_file.split(".")[-1]
-        if extension == "txt":
-            extension = "text"
-            dataset_args["keep_linebreaks"] = not args.no_keep_linebreaks
-        raw_datasets = load_dataset(extension, data_files=data_files, **dataset_args)
-        # If no validation data is there, validation_split_percentage will be used to divide the dataset.
-        if "validation" not in raw_datasets.keys():
-            raw_datasets["validation"] = load_dataset(
-                extension,
-                data_files=data_files,
-                split=f"train[:{args.validation_split_percentage}%]",
-                **dataset_args,
-            )
-            raw_datasets["train"] = load_dataset(
-                extension,
-                data_files=data_files,
-                split=f"train[{args.validation_split_percentage}%:]",
-                **dataset_args,
-            )
+    #    #if "validation" not in raw_datasets.keys():
+    #    #    raw_datasets["validation"] = load_dataset(
+    #    #        args.dataset_name,
+    #    #        args.dataset_config_name,
+    #    #        split=f"train[:{args.validation_split_percentage}%]",
+    #    #    )
+    #    #    raw_datasets["train"] = load_dataset(
+    #    #        args.dataset_name,
+    #    #        args.dataset_config_name,
+    #    #        split=f"train[{args.validation_split_percentage}%:]",
+    #    #    )
+    #else:
+    #    data_files = {}
+    #    dataset_args = {}
+    #    if args.train_file is not None:
+    #        data_files["train"] = args.train_file
+    #    if args.validation_file is not None:
+    #        data_files["validation"] = args.validation_file
+    #    extension = args.train_file.split(".")[-1]
+    #    if extension == "txt":
+    #        extension = "text"
+    #        dataset_args["keep_linebreaks"] = not args.no_keep_linebreaks
+    #    raw_datasets = load_dataset(extension, data_files=data_files, **dataset_args)
+    #    # If no validation data is there, validation_split_percentage will be used to divide the dataset.
+    #    if "validation" not in raw_datasets.keys():
+    #        raw_datasets["validation"] = load_dataset(
+    #            extension,
+    #            data_files=data_files,
+    #            split=f"train[:{args.validation_split_percentage}%]",
+    #            **dataset_args,
+    #        )
+    #        raw_datasets["train"] = load_dataset(
+    #            extension,
+    #            data_files=data_files,
+    #            split=f"train[{args.validation_split_percentage}%:]",
+    #            **dataset_args,
+    #        )
 
     # See more about loading any type of standard or custom dataset (from files, python dict, pandas DataFrame, etc) at
     # https://huggingface.co/docs/datasets/loading_datasets.html.
@@ -383,9 +383,9 @@ def main():
         logger.warning("You are instantiating a new config instance from scratch.")
 
     if args.tokenizer_name:
-        tokenizer = AutoTokenizer.from_pretrained(args.tokenizer_name, use_fast=not args.use_slow_tokenizer, padding_side='right')
+        tokenizer = AutoTokenizer.from_pretrained(args.tokenizer_name, use_fast=not args.use_slow_tokenizer, padding_side='left') #TODO: check if this is correct
     elif args.model_name_or_path:
-        tokenizer = AutoTokenizer.from_pretrained(args.model_name_or_path, use_fast=not args.use_slow_tokenizer, padding_side='right')
+        tokenizer = AutoTokenizer.from_pretrained(args.model_name_or_path, use_fast=not args.use_slow_tokenizer, padding_side='left') #TODO: check if this is correct
     else:
         raise ValueError(
             "You are instantiating a new tokenizer from scratch. This is not supported by this script."
@@ -420,7 +420,7 @@ def main():
     # Preprocessing the datasets.
     # First we tokenize all the texts.
     if args.do_train: #TODO: add argument do_train
-        column_names = list(raw_datasets["train"].features)
+        column_names = list(raw_datasets["test"].features) #TODO: change to train
     else:
         column_names = list(raw_datasets["validation"].features)
     if args.text_column_name is not None:
@@ -446,10 +446,10 @@ def main():
             desc="Running tokenizer on dataset",
         )
     if args.do_train: #TODO: add argument do_train
-        if "train" not in tokenized_datasets:
+        if "test" not in tokenized_datasets: #TODO: change to train
             raise ValueError("--do_train requires a train dataset")
-        train_dataset = tokenized_datasets["train"]
-        if args.max_train_samples is not None: #TODO: add argument max_train_samples
+        train_dataset = tokenized_datasets["test"] #TODO: change to train
+        if args.max_train_samples is not None:
             max_train_samples = min(len(train_dataset), args.max_train_samples)
             train_dataset = train_dataset.select(range(max_train_samples))
 
@@ -488,14 +488,11 @@ def main():
     # https://huggingface.co/docs/datasets/package_reference/main_classes.html#datasets.Dataset.map
 
    
-    train_dataset = tokenized_datasets["train"]
+    train_dataset = tokenized_datasets["test"] #TODO: change to train
     #train_dataset.set_format(type="torch")
 
-    eval_dataset = tokenized_datasets["validation"]
+    #eval_dataset = tokenized_datasets["validation"]
     #eval_dataset.set_format(type="torch")
-
-    def collator(data):
-        return dict((key, [d[key] for d in data]) for key in data[0])
 
     # collate function
     def data_collator(examples):
@@ -545,22 +542,6 @@ def main():
         transformers.utils.logging.set_verbosity_error()
 
 
-    # Setup the reward function
-    # This is a generator that yields a random number between 0 and 1
-    def reward_fn(samples, prompts, outputs):
-        """
-        This function is called by the trainer to calculate the reward for each sample.
-        The reward is a float between 0 and 1.
-
-        Args:
-
-            samples: The samples that were generated by the model. Prompts are prepended to the outputs.
-            prompts: The prompts that were used to generate the samples.
-            outputs: The outputs of the model. This is the same as samples, but without the prompts.
-        """
-        return random.uniform(0,1) # TODO: replace with actual reward function
-        # TODO: convert to tenso
-
 
     generation_kwargs = {
         "min_length":-1,
@@ -572,6 +553,50 @@ def main():
         #TODO: add early stopping based on brace matching
     }
 
+    from reward_fn import RewardFn
+    rewardfn = RewardFn()
+
+    """
+    # Calibrate the reward function
+    samples = train_dataset[:100]
+    encodings = tokenizer.pad(samples)
+    for k, v in encodings.items():
+        # convert to tensors
+        if isinstance(v, list):
+            encodings[k] = torch.tensor(v)
+
+    with torch.no_grad():
+        gen_tokens = model.generate(
+            **encodings,
+            **generation_kwargs,
+        )
+        prompts = tokenizer.batch_decode(encodings.input_ids, skip_special_tokens=True)
+        outputs = [tokenizer.decode(gen_tokens[i, encodings.input_ids.shape[1]:], skip_special_tokens=True) for i in range(gen_tokens.shape[0])]
+
+    rewardfn.calibrate(prompts, outputs)
+    """
+    rewardfn.avg_tokens =170.38
+    rewardfn.avg_errors = 50.39
+
+    # Setup the reward function
+    # This is a generator that yields a random number between 0 and 1
+    # def reward_fn(samples, prompts, outputs):
+        # """
+        # This function is called by the trainer to calculate the reward for each sample.
+        # The reward is a float between 0 and 1.
+
+        # Args:
+
+            # samples: The samples that were generated by the model. Prompts are prepended to the outputs.
+            # prompts: The prompts that were used to generate the samples.
+            # outputs: The outputs of the model. This is the same as samples, but without the prompts.
+        # """
+        # return random.uniform(0,1) # TODO: replace with actual reward function
+        # # TODO: convert to tenso
+    #
+
+    
+
     #See https://github.com/CarperAI/trlx/blob/b91da7b03d8e9fa0c0d6dce10a8f2611aca3013f/trlx/trainer/accelerate_base_trainer.py#L201
     # for how to create a stopping condition
     # https://github.com/CarperAI/trlx/pull/172
@@ -581,34 +606,36 @@ def main():
     #trainer = trlx.train('gpt2', reward_fn=lambda samples, **kwargs: [sample.count('cats') for sample in samples])
 
     # Only show the progress bar once on each machine.
-    progress_bar = tqdm(range(len(train_dataset)), disable=not trainer.accelerator.is_local_main_process)
+    progress_bar = tqdm(range(args.num_train_epochs*len(train_dataset)), disable=not trainer.accelerator.is_local_main_process)
     #completed_steps = 0
     #starting_epoch = 0
 
-    for epoch, batch in enumerate(trainer.dataloader):
-        query_tensors = batch['input_ids']
+    for epoch in range(args.num_train_epochs):
+        for _, batch in enumerate(trainer.dataloader):
+            query_tensors = batch['input_ids']
 
-        #### Get response from gpt2
-        response_tensors = []
-        for query in query_tensors:
-            gen_len = args.max_new_tokens #output_length_sampler()
-            generation_kwargs["max_new_tokens"] = gen_len
-            response = trainer.generate(query, **generation_kwargs)
-            response_tensors.append(response.squeeze()[-gen_len:])
-        batch['response'] = [tokenizer.decode(r.squeeze()) for r in response_tensors]
-        batch['query'] = [tokenizer.decode(r.squeeze()) for r in query_tensors] #TODO: remove this
-        
-        #### Compute reward
-        # texts = batch['response']
-        # rewards = [reward_fn() for _ in texts]
-        rewards = [torch.tensor(reward_fn("", "", "")) for _ in batch['response']]
+            #### Get response from gpt2
+            response_tensors = []
+            for query in query_tensors:
+                #print("GENERATING...")
+                gen_len = args.max_new_tokens #output_length_sampler()
+                generation_kwargs["max_new_tokens"] = gen_len
+                response = trainer.generate(query, **generation_kwargs)
+                response_tensors.append(response.squeeze()[-gen_len:])
+            batch['response'] = [tokenizer.decode(r.squeeze()) for r in response_tensors]
+            batch['query'] = [tokenizer.decode(r.squeeze()) for r in query_tensors] #TODO: remove this
+            
+            #### Compute reward
+            # texts = batch['response']
+            # rewards = [reward_fn() for _ in texts]
+            rewards = [torch.tensor(rewardfn(x)) for x in batch['response']]
 
-        #### Run PPO step 
-        stats = trainer.step(query_tensors, response_tensors, rewards)
-        progress_bar.update(args.per_device_train_batch_size)
-        trainer.log_stats(stats, batch, rewards)
+            #### Run PPO step 
+            stats = trainer.step(query_tensors, response_tensors, rewards)
+            progress_bar.update(args.per_device_train_batch_size)
+            trainer.log_stats(stats, batch, rewards)
 
-    progress_bar.close()
+        progress_bar.close()
 
     if args.with_tracking:
         trainer.accelerator.end_training()
