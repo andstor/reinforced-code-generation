@@ -612,10 +612,9 @@ def main():
     #trainer = trlx.train('gpt2', reward_fn=lambda samples, **kwargs: [sample.count('cats') for sample in samples])
 
     # Only show the progress bar once on each machine.
-    progress_bar = tqdm(range(args.num_train_epochs*len(train_dataset)), disable=not trainer.accelerator.is_local_main_process)
+    pbar = tqdm(range(args.num_train_epochs*len(train_dataset)), disable=not trainer.accelerator.is_local_main_process, position=0)
     #completed_steps = 0
     #starting_epoch = 0
-
     for epoch in range(args.num_train_epochs):
         for _, batch in enumerate(trainer.dataloader):
             query_tensors = batch['input_ids']
@@ -623,12 +622,18 @@ def main():
             #### Get response from gpt2
             response_tensors = []
             prompt_tensors = []
+            #num_rollouts = len(query_tensors)
+            #pbar.set_description(f"[rollout 0 / {num_rollouts}]")
+            #rollouts = 0
+            #subbar = tqdm(total=num_rollouts, leave=False, position=accelerator.state.process_index+1)
             for query in query_tensors:
                 # args.split_examples
                 gen_len = args.max_new_tokens #output_length_sampler()
                 generation_kwargs["max_new_tokens"] = gen_len
 
                 #print("GENERATING...")
+                
+                #subbar.set_description(f"Generating {gen_len} tokens")
                 if args.split_examples:
                     split_index = len(query)//2 #output_length_sampler()
                     prompt = query[:-split_index]
@@ -637,8 +642,10 @@ def main():
                 prompt_tensors.append(prompt)
                 response = trainer.generate(prompt, **generation_kwargs)
                 response_tensors.append(response.squeeze()[-gen_len:])
+                #rollouts += 1
+                #subbar.set_description(f"[rollout {rollouts} / {num_rollouts}]")
             batch['response'] = [tokenizer.decode(r.squeeze()) for r in response_tensors]
-            batch['prompt'] = [tokenizer.decode(p.squeeze()) for p in prompt_tensors]
+            batch['query'] = [tokenizer.decode(p.squeeze()) for p in prompt_tensors]
             batch['sample'] = [tokenizer.decode(s.squeeze()) for s in query_tensors]
             
             #### Compute reward
@@ -646,16 +653,16 @@ def main():
             # rewards = [reward_fn() for _ in texts]
             #rewards = [torch.tensor(rewardfn(x)) for x in batch['response']]
             if args.split_examples:
-                rewards = [torch.tensor(rewardfn(batch['prompt'][i] + batch['response'][i])) for i in range(len(batch['response']))]
+                rewards = [torch.tensor(rewardfn(batch['query'][i] + batch['response'][i])) for i in range(len(batch['response']))]
             else:
                 rewards = [torch.tensor(rewardfn(r)) for r in batch['response']]
 
             #### Run PPO step 
             stats = trainer.step(prompt_tensors, response_tensors, rewards)
-            progress_bar.update(args.per_device_train_batch_size)
+            pbar.update(args.per_device_train_batch_size)
             trainer.log_stats(stats, batch, rewards)
 
-        progress_bar.close()
+        pbar.close()
 
     if args.with_tracking:
         trainer.accelerator.end_training()
