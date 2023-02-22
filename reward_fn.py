@@ -45,14 +45,14 @@ class RewardFn:
         tree = self.parse(text)
         num_errors = self.parser.getNumberOfSyntaxErrors()
         norm_errors = normalize(num_errors, 0, self.avg_errors)
-        print("num_errors: ", num_errors)
-        print("norm_errors: ", norm_errors)
+        #print("num_errors: ", num_errors)
+        #print("norm_errors: ", norm_errors)
         #num_stmt = self.listener.num_stmt
         #lines = len(code.splitlines())
         num_tokens = len(self.getSymbolicNames(text))
         norm_tokens = normalize(num_tokens, 0, self.avg_tokens)
-        print("num_tokens: ", num_tokens)
-        print("norm_tokens: ", norm_tokens)
+        #print("num_tokens: ", num_tokens)
+        #print("norm_tokens: ", norm_tokens)
 
         #num_chars = len(text)
         #norm_chars = normalize(num_chars, 0, self.avg_tokens)
@@ -64,7 +64,7 @@ class RewardFn:
         clipped_norm_num_chars = minmax(num_tokens, 0.00001, 0.99999)
 
         score = exponential_decay(norm_errors, clipped_norm_num_chars, self.factor)
-        print("score: ", score)
+        #print("score: ", score)
         return minmax(score, 0.0, 1.0)
     
     def calibrate(self, prompts, outputs):
