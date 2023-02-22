@@ -10,18 +10,36 @@ Train with TRL:
 ```bash
 accelerate launch run_trl.py \
 --do_train \
---max_train_samples 100 \
 --dataset_name openai_humaneval \
 --dataset_config_name openai_humaneval \
 --text_column_name prompt \
---model_name_or_path gpt2 \
+--model_name_or_path gpt2-xl \
 --num_train_epochs 2 \
---per_device_train_batch_size 8 \
+--per_device_train_batch_size 64 \
+--forward_batch_size 16 \
+--output_dir output \
+--seed 42 \
+--preprocessing_num_workers 8 \
+--max_new_tokens 512 \
+--report_to wandb
+```
+
+Train with TRL:
+```bash
+accelerate launch run_trl.py \
+--do_train \
+--dataset_name code_x_glue_tc_text_to_code \
+--dataset_config_name default \
+--text_column_name code \
+--split_samples \
+--model_name_or_path gpt2-xl \
+--num_train_epochs 2 \
+--per_device_train_batch_size 64 \
 --forward_batch_size 1 \
 --output_dir output \
 --seed 42 \
---preprocessing_num_workers 10 \
---max_new_tokens 256 \
+--preprocessing_num_workers 8 \
+--max_new_tokens 512 \
 --report_to wandb
 ```
 

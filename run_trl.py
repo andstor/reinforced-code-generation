@@ -147,7 +147,7 @@ def parse_args():
     parser.add_argument(
         "--learning_rate",
         type=float,
-        default=5e-5,
+        default=1e-5,
         help="Initial learning rate (after the potential warmup period) to use.",
     )
     parser.add_argument("--weight_decay", type=float, default=0.0, help="Weight decay to use.")
@@ -259,6 +259,12 @@ def parse_args():
         default=None,
         help="For debugging purposes or quicker training, truncate the number of training examples to this value if set.",
     )
+    parser.add_argument(
+        "--split_samples",
+        action="store_true",
+        help="Whether to only use part of examples for training and evaluation.",
+    )
+
 
 
     args = parser.parse_args()
@@ -420,7 +426,7 @@ def main():
     # Preprocessing the datasets.
     # First we tokenize all the texts.
     if args.do_train: #TODO: add argument do_train
-        column_names = list(raw_datasets["test"].features) #TODO: change to train
+        column_names = list(raw_datasets["train"].features) #TODO: change to train
     else:
         column_names = list(raw_datasets["validation"].features)
     if args.text_column_name is not None:
@@ -446,9 +452,9 @@ def main():
             desc="Running tokenizer on dataset",
         )
     if args.do_train: #TODO: add argument do_train
-        if "test" not in tokenized_datasets: #TODO: change to train
+        if "train" not in tokenized_datasets: #TODO: change to train
             raise ValueError("--do_train requires a train dataset")
-        train_dataset = tokenized_datasets["test"] #TODO: change to train
+        train_dataset = tokenized_datasets["train"] #TODO: change to train
         if args.max_train_samples is not None:
             max_train_samples = min(len(train_dataset), args.max_train_samples)
             train_dataset = train_dataset.select(range(max_train_samples))
@@ -488,7 +494,7 @@ def main():
     # https://huggingface.co/docs/datasets/package_reference/main_classes.html#datasets.Dataset.map
 
    
-    train_dataset = tokenized_datasets["test"] #TODO: change to train
+    train_dataset = tokenized_datasets["train"] #TODO: change to train
     #train_dataset.set_format(type="torch")
 
     #eval_dataset = tokenized_datasets["validation"]
@@ -616,14 +622,22 @@ def main():
 
             #### Get response from gpt2
             response_tensors = []
+            sample_tensors = []
             for query in query_tensors:
+                # args.split_samples
+
                 #print("GENERATING...")
                 gen_len = args.max_new_tokens #output_length_sampler()
                 generation_kwargs["max_new_tokens"] = gen_len
-                response = trainer.generate(query, **generation_kwargs)
+                if args.split_samples:
+                    sample = query[:-gen_len]
+                else:
+                    sample = query
+                sample_tensors.append(sample)
+                response = trainer.generate(sample, **generation_kwargs)
                 response_tensors.append(response.squeeze()[-gen_len:])
             batch['response'] = [tokenizer.decode(r.squeeze()) for r in response_tensors]
-            batch['query'] = [tokenizer.decode(r.squeeze()) for r in query_tensors] #TODO: remove this
+            batch['query'] = [tokenizer.decode(r.squeeze()) for r in sample_tensors] #TODO: remove this
             
             #### Compute reward
             # texts = batch['response']
