@@ -24,14 +24,14 @@ accelerate launch run_trl.py \
 --report_to wandb
 ```
 
-Train with TRL:
+Train with TRL for code:
 ```bash
 accelerate launch run_trl.py \
 --do_train \
 --dataset_name code_x_glue_tc_text_to_code \
 --dataset_config_name default \
 --text_column_name code \
---split_samples \
+--split_examples \
 --model_name_or_path gpt2-xl \
 --num_train_epochs 2 \
 --per_device_train_batch_size 64 \

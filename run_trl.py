@@ -260,7 +260,7 @@ def parse_args():
         help="For debugging purposes or quicker training, truncate the number of training examples to this value if set.",
     )
     parser.add_argument(
-        "--split_samples",
+        "--split_examples",
         action="store_true",
         help="Whether to only use part of examples for training and evaluation.",
     )
@@ -622,30 +622,36 @@ def main():
 
             #### Get response from gpt2
             response_tensors = []
-            sample_tensors = []
+            prompt_tensors = []
             for query in query_tensors:
-                # args.split_samples
-
-                #print("GENERATING...")
+                # args.split_examples
                 gen_len = args.max_new_tokens #output_length_sampler()
                 generation_kwargs["max_new_tokens"] = gen_len
-                if args.split_samples:
-                    sample = query[:-gen_len]
+
+                #print("GENERATING...")
+                if args.split_examples:
+                    split_index = len(query)//2 #output_length_sampler()
+                    prompt = query[:-split_index]
                 else:
-                    sample = query
-                sample_tensors.append(sample)
-                response = trainer.generate(sample, **generation_kwargs)
+                    prompt = query
+                prompt_tensors.append(prompt)
+                response = trainer.generate(prompt, **generation_kwargs)
                 response_tensors.append(response.squeeze()[-gen_len:])
             batch['response'] = [tokenizer.decode(r.squeeze()) for r in response_tensors]
-            batch['query'] = [tokenizer.decode(r.squeeze()) for r in sample_tensors] #TODO: remove this
+            batch['prompt'] = [tokenizer.decode(p.squeeze()) for p in prompt_tensors]
+            batch['sample'] = [tokenizer.decode(s.squeeze()) for s in query_tensors]
             
             #### Compute reward
             # texts = batch['response']
             # rewards = [reward_fn() for _ in texts]
-            rewards = [torch.tensor(rewardfn(x)) for x in batch['response']]
+            #rewards = [torch.tensor(rewardfn(x)) for x in batch['response']]
+            if args.split_examples:
+                rewards = [rewardfn(batch['prompt'][i] + batch['response'][i]) for i in range(len(batch['response']))]
+            else:
+                rewards = [rewardfn(r) for r in batch['response']]
 
             #### Run PPO step 
-            stats = trainer.step(query_tensors, response_tensors, rewards)
+            stats = trainer.step(prompt_tensors, response_tensors, rewards)
             progress_bar.update(args.per_device_train_batch_size)
             trainer.log_stats(stats, batch, rewards)
 
