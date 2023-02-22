@@ -646,9 +646,9 @@ def main():
             # rewards = [reward_fn() for _ in texts]
             #rewards = [torch.tensor(rewardfn(x)) for x in batch['response']]
             if args.split_examples:
-                rewards = [rewardfn(batch['prompt'][i] + batch['response'][i]) for i in range(len(batch['response']))]
+                rewards = [torch.tensor(rewardfn(batch['prompt'][i] + batch['response'][i])) for i in range(len(batch['response']))]
             else:
-                rewards = [rewardfn(r) for r in batch['response']]
+                rewards = [torch.tensor(rewardfn(r)) for r in batch['response']]
 
             #### Run PPO step 
             stats = trainer.step(prompt_tensors, response_tensors, rewards)
