@@ -44,7 +44,11 @@ class RewardFn:
         num_tokens = len(self.getSymbolicNames(output))
         norm_tokens = normalize(num_tokens, 0, self.avg_tokens)
         
-        tree = self.parse(prompt + output)
+        try:
+            tree = self.parse(prompt + output)
+        except Exception as e:
+            print(e)
+            return 0.0
         num_errors = self.parser.getNumberOfSyntaxErrors()
         norm_errors = normalize(num_errors, 0, self.avg_errors)
         #print("num_errors: ", num_errors)
