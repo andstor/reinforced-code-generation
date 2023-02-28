@@ -428,10 +428,15 @@ def main():
         datasets.utils.logging.set_verbosity_error()
         transformers.utils.logging.set_verbosity_error()
 
+    from reward_fn import RewardFn
+    rewardfn = RewardFn()
+
+    rewardfn.avg_tokens = 200
+    rewardfn.avg_errors = 50
 
     # Setup the reward function
     # This is a generator that yields a random number between 0 and 1
-    def reward_fn(samples, prompts, outputs):
+    def rewards(samples, prompts, outputs):
         """
         This function is called by the trainer to calculate the reward for each sample.
         The reward is a float between 0 and 1.
@@ -443,12 +448,12 @@ def main():
             outputs: The outputs of the model. This is the same as samples, but without the prompts.
         """
         reward_list = []
-        for sample in samples:
-            reward_list.append(random.uniform(0,1))
+        for prompt, output in zip(prompts, outputs):
+            reward_list.append(rewardfn(prompt, output))
 
         return reward_list # TODO: replace with actual reward function
         # TODO: convert to tenso
-
+    
 
     #See https://github.com/CarperAI/trlx/blob/b91da7b03d8e9fa0c0d6dce10a8f2611aca3013f/trlx/trainer/accelerate_base_trainer.py#L201
     # for how to create a stopping condition
@@ -464,7 +469,7 @@ def main():
     eval_dataset = eval_dataset[args.text_column_name]
 
     trainer = trlx.train(
-        reward_fn=reward_fn,
+        reward_fn=rewards,
         prompts=train_dataset if args.do_train else None,
         eval_prompts=eval_dataset if args.do_eval else None,
         config=config,

@@ -38,19 +38,20 @@ class RewardFn:
         #self.listener = Listener()
         #self.parser.addParseListener(self.listener)
 
-    def __call__(self, text):
+    def __call__(self, prompt, output):
 
         #self.listener.reset()
+        num_tokens = len(self.getSymbolicNames(output))
+        norm_tokens = normalize(num_tokens, 0, self.avg_tokens)
         
-        tree = self.parse(text)
+        tree = self.parse(prompt + output)
         num_errors = self.parser.getNumberOfSyntaxErrors()
         norm_errors = normalize(num_errors, 0, self.avg_errors)
         #print("num_errors: ", num_errors)
         #print("norm_errors: ", norm_errors)
         #num_stmt = self.listener.num_stmt
         #lines = len(code.splitlines())
-        num_tokens = len(self.getSymbolicNames(text))
-        norm_tokens = normalize(num_tokens, 0, self.avg_tokens)
+        
         #print("num_tokens: ", num_tokens)
         #print("norm_tokens: ", norm_tokens)
 
@@ -61,7 +62,7 @@ class RewardFn:
         #print("clipped_norm_num_chars: ", clipped_norm_num_chars)
 
         minmax = lambda x, min_value, max_value: max(min(x, max_value), min_value)
-        clipped_norm_num_chars = minmax(num_tokens, 0.00001, 0.99999)
+        clipped_norm_num_chars = minmax(norm_tokens, 0.00001, 0.99999)
 
         score = exponential_decay(norm_errors, clipped_norm_num_chars, self.factor)
         #print("score: ", score)

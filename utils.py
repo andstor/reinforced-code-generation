@@ -9,6 +9,7 @@ def exponential_decay(x, a, c=100):
     #\left(\frac{\left(b-b^{\left(x+1\right)}\right)}{b-1}+b^{x}\right)
     #simplified: \frac{-b^{x}+b}{b-1}
     #1>b>0
+    #1>a>0
     # The higher the value of c, the more the decay is delayed
     x = Decimal(x)
     a = Decimal(a)
