@@ -58,7 +58,7 @@ from transformers.utils.versions import require_version
 
 
 import trlx
-from trlx.data.configs import TRLConfig
+from trlx.data.default_configs import default_ppo_config, TrainConfig
 
 
 
@@ -266,6 +266,12 @@ def parse_args():
         default=None,
         help="For debugging purposes or quicker training, truncate the number of evaluation examples to this value if set.",
     )
+    parser.add_argument(
+        "--seq_length",
+        type=int,
+        default=40,
+        help="The sequence length to use for training and evaluation."
+    )
 
 
     args = parser.parse_args()
@@ -462,8 +468,13 @@ def main():
     
 
     #trainer = trlx.train('gpt2', reward_fn=lambda samples, **kwargs: [sample.count('cats') for sample in samples])
-    config = TRLConfig.load_yaml("./gpt2_config.yml")
+    #config = TRLConfig.load_yaml("./gpt2_config.yml")
     #config = TRLConfig.update(default_config, hparams)
+    config = default_ppo_config()
+    config.model.model_path = args.model_name_or_path
+    config.train.seq_length = args.seq_length
+    config.train.batch_size = args.per_device_train_batch_size
+    config.method.gen_kwargs["max_new_tokens"] = args.max_new_tokens
 
     train_dataset = train_dataset[args.text_column_name]
     eval_dataset = eval_dataset[args.text_column_name]
